@@ -4,7 +4,7 @@ import nodemailer from 'nodemailer';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { smtp, contacts, subject, text, html } = body;
+    const { smtp, contacts, subject, text, html, attachments } = body;
 
     // Validate inputs
     if (!smtp || !smtp.host || !smtp.port || !smtp.user || !smtp.pass) {
@@ -31,6 +31,9 @@ export async function POST(req: Request) {
     // Verify connection config
     await transporter.verify();
 
+    // Format sender
+    const sender = smtp.senderName ? `"${smtp.senderName}" <${smtp.user}>` : smtp.user;
+
     // Send emails
     const results = [];
     for (const contact of contacts) {
@@ -43,11 +46,12 @@ export async function POST(req: Request) {
         }
 
         const info = await transporter.sendMail({
-          from: smtp.user,
+          from: sender,
           to: contact.email,
           subject: subject,
           text: personalizedText,
           html: personalizedHtml,
+          attachments: attachments ? attachments.map((a: any) => ({ filename: a.filename, content: a.content, encoding: 'base64' })) : []
         });
 
         results.push({ email: contact.email, success: true, messageId: info.messageId });

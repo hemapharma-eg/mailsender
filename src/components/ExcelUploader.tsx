@@ -16,12 +16,14 @@ interface Props {
 export default function ExcelUploader({ onContactsLoaded }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string>('');
+  const [successMsg, setSuccessMsg] = useState<string>('');
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setError('');
+    setSuccessMsg('');
     const reader = new FileReader();
 
     reader.onload = (evt) => {
@@ -44,7 +46,11 @@ export default function ExcelUploader({ onContactsLoaded }: Props) {
           return;
         }
 
+        setSuccessMsg(`Successfully imported ${contacts.length} contacts!`);
         onContactsLoaded(contacts);
+        
+        // Hide success message after 5 seconds
+        setTimeout(() => setSuccessMsg(''), 5000);
       } catch (err: any) {
         setError('Error parsing Excel file. Please try again.');
         console.error(err);
@@ -77,6 +83,7 @@ export default function ExcelUploader({ onContactsLoaded }: Props) {
         onChange={handleFileUpload}
       />
       {error && <p className="text-error" style={{ marginTop: '1rem', fontSize: '0.875rem' }}>{error}</p>}
+      {successMsg && <p className="text-success" style={{ marginTop: '1rem', fontSize: '0.875rem', fontWeight: 500 }}>{successMsg}</p>}
     </div>
   );
 }

@@ -1,13 +1,20 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import ExcelUploader, { Contact } from '../components/ExcelUploader';
-import { Mail, Settings, Send, Users, CheckCircle, XCircle } from 'lucide-react';
+import { Mail, Settings, Send, Users, CheckCircle, XCircle, Trash2, Paperclip, X } from 'lucide-react';
+import 'react-quill/dist/quill.snow.css';
+
+const ReactQuill = dynamic(() => import('react-quill'), { ssr: false }) as any;
 
 export default function Home() {
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [smtp, setSmtp] = useState({ host: '', port: '465', user: '', pass: '' });
-  const [emailContent, setEmailContent] = useState({ subject: '', text: '' });
+  const [smtp, setSmtp] = useState({ host: '', port: '465', user: '', pass: '', senderName: '' });
+  const [emailContent, setEmailContent] = useState({ subject: '' });
+  const [emailHtml, setEmailHtml] = useState('');
+  const [signatureHtml, setSignatureHtml] = useState('');
+  const [attachments, setAttachments] = useState<{ filename: string; content: string }[]>([]);
   
   const [isSending, setIsSending] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -17,22 +24,55 @@ export default function Home() {
     setSmtp({ ...smtp, [e.target.name]: e.target.value });
   };
 
-  const handleContentChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleContentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmailContent({ ...emailContent, [e.target.name]: e.target.value });
+  };
+
+  const removeContact = (index: number) => {
+    setContacts(contacts.filter((_, i) => i !== index));
+  };
+
+  const clearAllContacts = () => {
+    if (confirm('Are you sure you want to delete all imported contacts?')) {
+      setContacts([]);
+    }
+  };
+
+  const handleAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const base64String = (evt.target?.result as string).split(',')[1];
+        if (base64String) {
+          setAttachments(prev => [...prev, { filename: file.name, content: base64String }]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    // clear input
+    e.target.value = '';
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(attachments.filter((_, i) => i !== index));
   };
 
   const sendEmails = async () => {
     if (contacts.length === 0) return alert('Please import contacts first');
     if (!smtp.host || !smtp.user || !smtp.pass) return alert('Please fill in required SMTP credentials');
-    if (!emailContent.subject || !emailContent.text) return alert('Please fill in email subject and text');
+    if (!emailContent.subject || (!emailHtml && !signatureHtml)) return alert('Please fill in email subject and body');
 
     setIsSending(true);
     setProgress(10);
     setResults(null);
 
+    // Combine email body and signature
+    const finalHtml = `${emailHtml}<br/><br/>${signatureHtml}`;
+
     try {
-      // In a real scenario, you'd probably chunk the array to not overwhelm the server
-      // But since the API route loops through sequentially, we'll just send it all
       const res = await fetch('/api/send-emails', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -40,7 +80,8 @@ export default function Home() {
           smtp,
           contacts,
           subject: emailContent.subject,
-          text: emailContent.text
+          html: finalHtml,
+          attachments
         })
       });
 
@@ -74,18 +115,29 @@ export default function Home() {
 
           {contacts.length > 0 && (
             <div className="card">
-              <h2><Users size={20} /> {contacts.length} Contacts Loaded</h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h2 style={{ marginBottom: 0 }}><Users size={20} /> {contacts.length} Contacts Loaded</h2>
+                <button onClick={clearAllContacts} className="btn" style={{ width: 'auto', padding: '0.5rem 1rem', backgroundColor: 'var(--error)' }}>
+                  <Trash2 size={16} /> Delete All
+                </button>
+              </div>
               <div className="contacts-grid">
-                {contacts.slice(0, 10).map((c, i) => (
-                  <div key={i} className="contact-badge">
+                {contacts.slice(0, 50).map((c, i) => (
+                  <div key={i} className="contact-badge" style={{ position: 'relative', paddingRight: '2rem' }}>
                     <div className="contact-name">{c.name || 'No Name'}</div>
                     <div className="contact-email">{c.email}</div>
+                    <button 
+                      onClick={() => removeContact(i)}
+                      style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}
+                    >
+                      <X size={16} />
+                    </button>
                   </div>
                 ))}
               </div>
-              {contacts.length > 10 && (
+              {contacts.length > 50 && (
                 <p style={{ marginTop: '1rem', color: '#94a3b8', fontSize: '0.875rem' }}>
-                  And {contacts.length - 10} more...
+                  And {contacts.length - 50} more... (only showing first 50)
                 </p>
               )}
             </div>
@@ -93,6 +145,10 @@ export default function Home() {
 
           <div className="card">
             <h2><Settings size={20} /> SMTP Configuration</h2>
+            <div className="form-group">
+              <label>Sender Name (Appears to recipients)</label>
+              <input type="text" name="senderName" className="form-input" placeholder="John Doe" value={smtp.senderName} onChange={handleSmtpChange} />
+            </div>
             <div className="form-group">
               <label>SMTP Host</label>
               <input type="text" name="host" className="form-input" placeholder="smtp.gmail.com" value={smtp.host} onChange={handleSmtpChange} />
@@ -119,17 +175,40 @@ export default function Home() {
               <label>Subject</label>
               <input type="text" name="subject" className="form-input" placeholder="Exciting news!" value={emailContent.subject} onChange={handleContentChange} />
             </div>
-            <div className="form-group">
+            <div className="form-group" style={{ marginBottom: '4rem' }}>
               <label>Message Body (Use {'{{Name}}'} to personalize)</label>
-              <textarea 
-                name="text" 
-                className="form-input" 
-                rows={10} 
-                style={{ resize: 'vertical' }}
-                placeholder="Hi {{Name}},\n\nHere's the final update..." 
-                value={emailContent.text} 
-                onChange={handleContentChange} 
-              />
+              <div style={{ backgroundColor: 'white', color: 'black', borderRadius: '8px', overflow: 'hidden' }}>
+                <ReactQuill theme="snow" value={emailHtml} onChange={setEmailHtml} style={{ height: '200px' }} />
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '4rem' }}>
+              <label>Signature</label>
+              <div style={{ backgroundColor: 'white', color: 'black', borderRadius: '8px', overflow: 'hidden' }}>
+                <ReactQuill theme="snow" value={signatureHtml} onChange={setSignatureHtml} style={{ height: '100px' }} />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Attachments</label>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <label className="btn" style={{ width: 'auto', backgroundColor: '#334155', cursor: 'pointer' }}>
+                  <Paperclip size={20} /> Add Files
+                  <input type="file" multiple style={{ display: 'none' }} onChange={handleAttachmentUpload} />
+                </label>
+              </div>
+              {attachments.length > 0 && (
+                <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {attachments.map((att, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#0f172a', padding: '0.5rem 1rem', borderRadius: '8px' }}>
+                      <span style={{ fontSize: '0.875rem' }}>{att.filename}</span>
+                      <button onClick={() => removeAttachment(i)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}>
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <button 
