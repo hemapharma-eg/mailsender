@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import ExcelUploader, { Contact } from '../components/ExcelUploader';
-import { Mail, Settings, Send, Users, CheckCircle, XCircle, Trash2, Paperclip, X } from 'lucide-react';
+import { Mail, Settings, Send, Users, CheckCircle, XCircle, Trash2, Paperclip, X, Maximize, Minimize } from 'lucide-react';
 import 'react-quill/dist/quill.snow.css';
 
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false }) as any;
@@ -16,6 +16,9 @@ export default function Home() {
   const [signatureHtml, setSignatureHtml] = useState('');
   const [attachments, setAttachments] = useState<{ filename: string; content: string }[]>([]);
   
+  const [isBodyFullscreen, setIsBodyFullscreen] = useState(false);
+  const [isSignatureFullscreen, setIsSignatureFullscreen] = useState(false);
+
   const [isSending, setIsSending] = useState(false);
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<{successful: number, failed: number} | null>(null);
@@ -26,6 +29,17 @@ export default function Home() {
 
   const handleContentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmailContent({ ...emailContent, [e.target.name]: e.target.value });
+  };
+
+  const quillModules = {
+    toolbar: [
+      [{ 'header': [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'color': [] }, { 'background': [] }],
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      ['link', 'image'],
+      ['clean']
+    ]
   };
 
   const removeContact = (index: number) => {
@@ -176,16 +190,28 @@ export default function Home() {
               <input type="text" name="subject" className="form-input" placeholder="Exciting news!" value={emailContent.subject} onChange={handleContentChange} />
             </div>
             <div className="form-group" style={{ marginBottom: '4rem' }}>
-              <label>Message Body (Use {'{{Name}}'} to personalize)</label>
-              <div style={{ backgroundColor: 'white', color: 'black', borderRadius: '8px', overflow: 'hidden' }}>
-                <ReactQuill theme="snow" value={emailHtml} onChange={setEmailHtml} style={{ height: '200px' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label>Message Body (Use {'{{Name}}'} to personalize)</label>
+                <button onClick={() => setIsBodyFullscreen(!isBodyFullscreen)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  {isBodyFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+                  {isBodyFullscreen ? 'Exit Fullscreen' : 'Fullscreen Editor'}
+                </button>
+              </div>
+              <div className={isBodyFullscreen ? "fullscreen-editor" : ""} style={{ backgroundColor: 'white', color: 'black', borderRadius: '8px', overflow: 'hidden' }}>
+                <ReactQuill theme="snow" modules={quillModules} value={emailHtml} onChange={setEmailHtml} style={{ height: isBodyFullscreen ? 'calc(100vh - 100px)' : '300px' }} />
               </div>
             </div>
 
             <div className="form-group" style={{ marginBottom: '4rem' }}>
-              <label>Signature</label>
-              <div style={{ backgroundColor: 'white', color: 'black', borderRadius: '8px', overflow: 'hidden' }}>
-                <ReactQuill theme="snow" value={signatureHtml} onChange={setSignatureHtml} style={{ height: '100px' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label>Signature</label>
+                <button onClick={() => setIsSignatureFullscreen(!isSignatureFullscreen)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  {isSignatureFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+                  {isSignatureFullscreen ? 'Exit Fullscreen' : 'Fullscreen Editor'}
+                </button>
+              </div>
+              <div className={isSignatureFullscreen ? "fullscreen-editor" : ""} style={{ backgroundColor: 'white', color: 'black', borderRadius: '8px', overflow: 'hidden' }}>
+                <ReactQuill theme="snow" modules={quillModules} value={signatureHtml} onChange={setSignatureHtml} style={{ height: isSignatureFullscreen ? 'calc(100vh - 100px)' : '150px' }} />
               </div>
             </div>
 
