@@ -121,7 +121,17 @@ export default function Home() {
       });
 
       setProgress(50);
-      const data = await res.json();
+      
+      let data;
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        const isTooLarge = text.includes('413') || text.includes('Too Large') || res.status === 413;
+        throw new Error(isTooLarge ? 'Attachments or inline images are too large! Free hosts limit payloads to 4.5MB. Please reduce the file sizes.' : `Unexpected format (${res.status}): ${text.substring(0, 100)}`);
+      }
+
       setProgress(100);
 
       if (res.ok) {
