@@ -53,6 +53,16 @@ export default function Home() {
     }
   };
 
+  const appendToEmail = (text: string) => {
+    setEmailHtml(prev => {
+      if (!prev) return `<p>${text}</p>`;
+      if (prev.trim().endsWith('</p>')) {
+        return prev.trim().substring(0, prev.trim().length - 4) + text + '</p>';
+      }
+      return prev + text;
+    });
+  };
+
   const removeContact = (index: number) => {
     setContacts(contacts.filter((_, i) => i !== index));
   };
@@ -220,8 +230,8 @@ export default function Home() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                   <label style={{ margin: 0 }}>Message Body</label>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <button onClick={() => setEmailHtml(prev => prev + '{{Title}} ')} className="btn" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', width: 'auto', backgroundColor: '#334155' }}>Insert {'{{Title}}'}</button>
-                    <button onClick={() => setEmailHtml(prev => prev + '{{Name}} ')} className="btn" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', width: 'auto', backgroundColor: '#334155' }}>Insert {'{{Name}}'}</button>
+                    <button onClick={() => appendToEmail('{{Title}} ')} className="btn" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', width: 'auto', backgroundColor: '#334155' }}>Insert {'{{Title}}'}</button>
+                    <button onClick={() => appendToEmail('{{Name}} ')} className="btn" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', width: 'auto', backgroundColor: '#334155' }}>Insert {'{{Name}}'}</button>
                     <button onClick={() => setIsBodyFullscreen(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', marginLeft: '1rem' }}>
                       <Maximize size={16} /> Fullscreen Editor
                     </button>
@@ -231,7 +241,13 @@ export default function Home() {
               <div className={isBodyFullscreen ? "fullscreen-editor" : ""} style={{ backgroundColor: 'white', color: 'black', borderRadius: '8px', overflow: 'hidden' }}>
                 {isBodyFullscreen && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface)', padding: '1rem', borderBottom: '1px solid var(--surface-border)', color: 'white' }}>
-                    <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Message Body (Fullscreen)</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Message Body (Fullscreen)</h2>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button onClick={() => appendToEmail('{{Title}} ')} className="btn" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', width: 'auto', backgroundColor: '#334155' }}>Insert {'{{Title}}'}</button>
+                        <button onClick={() => appendToEmail('{{Name}} ')} className="btn" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', width: 'auto', backgroundColor: '#334155' }}>Insert {'{{Name}}'}</button>
+                      </div>
+                    </div>
                     <button onClick={() => setIsBodyFullscreen(false)} className="btn" style={{ width: 'auto', backgroundColor: 'var(--error)', padding: '0.5rem 1rem' }}>
                       <X size={20} /> Close Fullscreen
                     </button>
