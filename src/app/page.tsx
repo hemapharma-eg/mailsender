@@ -6,7 +6,15 @@ import ExcelUploader, { Contact } from '../components/ExcelUploader';
 import { Mail, Settings, Send, Users, CheckCircle, XCircle, Trash2, Paperclip, X, Maximize, Minimize } from 'lucide-react';
 import 'react-quill/dist/quill.snow.css';
 
-const ReactQuill = dynamic(() => import('react-quill'), { ssr: false }) as any;
+const ReactQuill = dynamic(async () => {
+  const { default: RQ } = await import('react-quill');
+  const { default: ImageResize } = await import('quill-image-resize-module-react');
+  if (typeof window !== 'undefined') {
+    (window as any).Quill = RQ.Quill;
+  }
+  RQ.Quill.register('modules/imageResize', ImageResize);
+  return RQ;
+}, { ssr: false }) as any;
 
 export default function Home() {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -39,7 +47,10 @@ export default function Home() {
       [{ 'list': 'ordered'}, { 'list': 'bullet' }],
       ['link', 'image'],
       ['clean']
-    ]
+    ],
+    imageResize: {
+      modules: [ 'Resize', 'DisplaySize' ]
+    }
   };
 
   const removeContact = (index: number) => {
@@ -190,27 +201,45 @@ export default function Home() {
               <input type="text" name="subject" className="form-input" placeholder="Exciting news!" value={emailContent.subject} onChange={handleContentChange} />
             </div>
             <div className="form-group" style={{ marginBottom: '4rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label>Message Body (Use {'{{Name}}'} to personalize)</label>
-                <button onClick={() => setIsBodyFullscreen(!isBodyFullscreen)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  {isBodyFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
-                  {isBodyFullscreen ? 'Exit Fullscreen' : 'Fullscreen Editor'}
-                </button>
-              </div>
+              {!isBodyFullscreen && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <label style={{ margin: 0 }}>Message Body (Use {'{{Name}}'} to personalize)</label>
+                  <button onClick={() => setIsBodyFullscreen(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <Maximize size={16} /> Fullscreen Editor
+                  </button>
+                </div>
+              )}
               <div className={isBodyFullscreen ? "fullscreen-editor" : ""} style={{ backgroundColor: 'white', color: 'black', borderRadius: '8px', overflow: 'hidden' }}>
+                {isBodyFullscreen && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface)', padding: '1rem', borderBottom: '1px solid var(--surface-border)', color: 'white' }}>
+                    <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Message Body (Fullscreen)</h2>
+                    <button onClick={() => setIsBodyFullscreen(false)} className="btn" style={{ width: 'auto', backgroundColor: 'var(--error)', padding: '0.5rem 1rem' }}>
+                      <X size={20} /> Close Fullscreen
+                    </button>
+                  </div>
+                )}
                 <ReactQuill theme="snow" modules={quillModules} value={emailHtml} onChange={setEmailHtml} style={{ height: isBodyFullscreen ? 'calc(100vh - 100px)' : '300px' }} />
               </div>
             </div>
 
             <div className="form-group" style={{ marginBottom: '4rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label>Signature</label>
-                <button onClick={() => setIsSignatureFullscreen(!isSignatureFullscreen)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  {isSignatureFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
-                  {isSignatureFullscreen ? 'Exit Fullscreen' : 'Fullscreen Editor'}
-                </button>
-              </div>
+              {!isSignatureFullscreen && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <label style={{ margin: 0 }}>Signature</label>
+                  <button onClick={() => setIsSignatureFullscreen(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <Maximize size={16} /> Fullscreen Editor
+                  </button>
+                </div>
+              )}
               <div className={isSignatureFullscreen ? "fullscreen-editor" : ""} style={{ backgroundColor: 'white', color: 'black', borderRadius: '8px', overflow: 'hidden' }}>
+                {isSignatureFullscreen && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface)', padding: '1rem', borderBottom: '1px solid var(--surface-border)', color: 'white' }}>
+                    <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Signature (Fullscreen)</h2>
+                    <button onClick={() => setIsSignatureFullscreen(false)} className="btn" style={{ width: 'auto', backgroundColor: 'var(--error)', padding: '0.5rem 1rem' }}>
+                      <X size={20} /> Close Fullscreen
+                    </button>
+                  </div>
+                )}
                 <ReactQuill theme="snow" modules={quillModules} value={signatureHtml} onChange={setSignatureHtml} style={{ height: isSignatureFullscreen ? 'calc(100vh - 100px)' : '150px' }} />
               </div>
             </div>
