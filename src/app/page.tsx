@@ -140,7 +140,10 @@ export default function Home() {
   return (
     <div className="container">
       <div className="header">
-        <h1>Email Sender Pro</h1>
+        <h1 style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '0.75rem' }}>
+          Bulk Email Sender
+          <span style={{ fontSize: '1.25rem', fontWeight: 500, color: '#94a3b8' }}>by TooLabX</span>
+        </h1>
         <p>Send bulk emails easily from your own SMTP server</p>
       </div>
 
