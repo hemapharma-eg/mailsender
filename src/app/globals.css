@@ -117,33 +117,32 @@ body {
   cursor: not-allowed;
 }
 
-.contacts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1rem;
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
   margin-top: 1rem;
-  max-height: 300px;
-  overflow-y: auto;
-  padding-right: 0.5rem;
 }
 
-.contact-badge {
-  background-color: #0f172a;
-  border: 1px solid var(--surface-border);
-  padding: 0.75rem;
-  border-radius: 8px;
+.contacts-table {
+  width: 100%;
+  border-collapse: collapse;
   font-size: 0.875rem;
 }
 
-.contact-name {
-  font-weight: 600;
-  margin-bottom: 0.25rem;
+.contacts-table th, .contacts-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--surface-border);
+  text-align: left;
 }
 
-.contact-email {
+.contacts-table th {
+  font-weight: 500;
   color: #94a3b8;
-  font-size: 0.75rem;
-  word-break: break-all;
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.contacts-table tr:hover {
+  background-color: rgba(255, 255, 255, 0.02);
 }
 
 .uploader {

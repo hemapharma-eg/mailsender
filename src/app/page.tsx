@@ -146,19 +146,34 @@ export default function Home() {
                   <Trash2 size={16} /> Delete All
                 </button>
               </div>
-              <div className="contacts-grid">
-                {contacts.slice(0, 50).map((c, i) => (
-                  <div key={i} className="contact-badge" style={{ position: 'relative', paddingRight: '2rem' }}>
-                    <div className="contact-name">{c.name || 'No Name'}</div>
-                    <div className="contact-email">{c.email}</div>
-                    <button 
-                      onClick={() => removeContact(i)}
-                      style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                ))}
+              <div className="table-responsive">
+                <table className="contacts-table">
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th style={{ width: '50px', textAlign: 'center' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {contacts.slice(0, 50).map((c, i) => (
+                      <tr key={i}>
+                        <td>{c.title || '-'}</td>
+                        <td>{c.name || '-'}</td>
+                        <td>{c.email}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button 
+                            onClick={() => removeContact(i)}
+                            style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}
+                          >
+                            <X size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
               {contacts.length > 50 && (
                 <p style={{ marginTop: '1rem', color: '#94a3b8', fontSize: '0.875rem' }}>
@@ -203,10 +218,14 @@ export default function Home() {
             <div className="form-group" style={{ marginBottom: '4rem' }}>
               {!isBodyFullscreen && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <label style={{ margin: 0 }}>Message Body (Use {'{{Name}}'} to personalize)</label>
-                  <button onClick={() => setIsBodyFullscreen(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <Maximize size={16} /> Fullscreen Editor
-                  </button>
+                  <label style={{ margin: 0 }}>Message Body</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <button onClick={() => setEmailHtml(prev => prev + '{{Title}} ')} className="btn" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', width: 'auto', backgroundColor: '#334155' }}>Insert {'{{Title}}'}</button>
+                    <button onClick={() => setEmailHtml(prev => prev + '{{Name}} ')} className="btn" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', width: 'auto', backgroundColor: '#334155' }}>Insert {'{{Name}}'}</button>
+                    <button onClick={() => setIsBodyFullscreen(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', marginLeft: '1rem' }}>
+                      <Maximize size={16} /> Fullscreen Editor
+                    </button>
+                  </div>
                 </div>
               )}
               <div className={isBodyFullscreen ? "fullscreen-editor" : ""} style={{ backgroundColor: 'white', color: 'black', borderRadius: '8px', overflow: 'hidden' }}>

@@ -38,9 +38,9 @@ export async function POST(req: Request) {
     const results = [];
     for (const contact of contacts) {
       try {
-        // Replace placeholders in text/html (e.g. {{Name}})
-        const personalizedText = text ? text.replace(/{{\s*Name\s*}}/gi, contact.name || '') : undefined;
-        let personalizedHtml = html ? html.replace(/{{\s*Name\s*}}/gi, contact.name || '') : undefined;
+        // Replace placeholders in text/html (e.g. {{Name}}, {{Title}})
+        const personalizedText = text ? text.replace(/{{\s*Name\s*}}/gi, contact.name || '').replace(/{{\s*Title\s*}}/gi, contact.title || '') : undefined;
+        let personalizedHtml = html ? html.replace(/{{\s*Name\s*}}/gi, contact.name || '').replace(/{{\s*Title\s*}}/gi, contact.title || '') : undefined;
         if (!personalizedHtml && personalizedText) {
           personalizedHtml = personalizedText.replace(/\n/g, '<br/>');
         }
