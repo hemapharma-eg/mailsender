@@ -115,7 +115,7 @@ export default function Home() {
     
     let totalSuccessful = 0;
     let totalFailed = 0;
-    let hasError = false;
+    const errors: string[] = [];
 
     const BATCH_SIZE = 20;
     const totalBatches = Math.ceil(contacts.length / BATCH_SIZE);
@@ -150,14 +150,19 @@ export default function Home() {
           if (res.ok) {
             totalSuccessful += data.successful || 0;
             totalFailed += data.failed || 0;
+            if (data.results) {
+               data.results.forEach((r: any) => {
+                  if (!r.success && r.error) errors.push(r.error);
+               });
+            }
           } else {
             totalFailed += batchContacts.length;
-            hasError = true;
+            errors.push(data.error || 'Unknown server error');
             console.error('Batch error:', data.error);
           }
         } catch (err: any) {
           totalFailed += batchContacts.length;
-          hasError = true;
+          errors.push(err.message || 'Batch exception');
           console.error('Batch exception:', err);
         }
 
@@ -166,8 +171,9 @@ export default function Home() {
 
       setResults({ successful: totalSuccessful, failed: totalFailed });
       
-      if (hasError) {
-        alert('Finished sending but with some errors. Check the console for details.');
+      if (errors.length > 0) {
+        const uniqueErrors = Array.from(new Set(errors)).slice(0, 3).join(' | ');
+        alert(`Finished sending with errors. Top errors: ${uniqueErrors}`);
       }
     } catch (err: any) {
       console.error(err);

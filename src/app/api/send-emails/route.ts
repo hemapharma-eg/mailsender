@@ -17,8 +17,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing email content' }, { status: 400 });
     }
 
-    // Initialize transporter
+    // Initialize transporter with connection pooling
     const transporter = nodemailer.createTransport({
+      pool: true,
+      maxConnections: 5,
+      maxMessages: 100,
       host: smtp.host,
       port: Number(smtp.port),
       secure: Number(smtp.port) === 465, // true for 465, false for other ports
@@ -28,17 +31,15 @@ export async function POST(req: Request) {
       },
     });
 
-    // Verify connection config
-    await transporter.verify();
+    // We do not await transporter.verify() here because it slows down every batch request and 
+    // any auth error will be caught during sendMail.
 
     // Format sender
     const sender = smtp.senderName ? `"${smtp.senderName}" <${smtp.user}>` : smtp.user;
 
-    // Send emails
-    const results = [];
-    for (const contact of contacts) {
+    // Send emails concurrently via the pool
+    const promises = contacts.map(async (contact: any) => {
       try {
-        // Replace placeholders in text/html (e.g. {{Name}}, {{Title}})
         const personalizedText = text ? text.replace(/{{\s*Name\s*}}/gi, contact.name || '').replace(/{{\s*Title\s*}}/gi, contact.title || '') : undefined;
         let personalizedHtml = html ? html.replace(/{{\s*Name\s*}}/gi, contact.name || '').replace(/{{\s*Title\s*}}/gi, contact.title || '') : undefined;
         if (!personalizedHtml && personalizedText) {
@@ -54,14 +55,16 @@ export async function POST(req: Request) {
           attachments: attachments ? attachments.map((a: any) => ({ filename: a.filename, content: a.content, encoding: 'base64' })) : []
         });
 
-        results.push({ email: contact.email, success: true, messageId: info.messageId });
+        return { email: contact.email, success: true, messageId: info.messageId };
       } catch (error: any) {
-        results.push({ email: contact.email, success: false, error: error.message });
+        return { email: contact.email, success: false, error: error.message };
       }
-      
-      // Add a small delay between each email to avoid rate limits (optional, but good practice)
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
+    });
+
+    const results = await Promise.all(promises);
+    
+    // Close the pool to ensure the serverless function can exit or doesn't leak connections
+    transporter.close();
 
     const successful = results.filter(r => r.success).length;
     const failed = results.filter(r => !r.success).length;
