@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 
+export const maxDuration = 60; // Extend Vercel function timeout to 60s for Sequential execution
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();

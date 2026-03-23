@@ -150,6 +150,9 @@ export default function Home() {
     setIsSending(true);
     setProgress(0);
     setResults(null);
+    
+    // Clear previous statuses so it doesn't stay 'S' if resent
+    setContacts(prev => prev.map(c => ({ ...c, status: undefined })));
 
     // Combine email body and signature
     const finalHtml = `${emailHtml}<br/><br/>${signatureHtml}`;
@@ -203,13 +206,17 @@ export default function Home() {
             }
           } else {
             totalFailed += batchContacts.length;
-            errors.push(data.error || 'Unknown server error');
-            console.error('Batch error:', data.error);
+            errors.push(data?.error || 'Unknown server error');
+            console.error('Batch error:', data?.error);
+            // Mark all in this batch as failed
+            setContacts(prev => prev.map(c => batchContacts.find(bc => bc.email === c.email) ? { ...c, status: 'F' } : c));
           }
         } catch (err: any) {
           totalFailed += batchContacts.length;
           errors.push(err.message || 'Batch exception');
           console.error('Batch exception:', err);
+          // Mark all in this batch as failed
+          setContacts(prev => prev.map(c => batchContacts.find(bc => bc.email === c.email) ? { ...c, status: 'F' } : c));
         }
 
         setProgress(Math.round(((i + 1) / totalBatches) * 100));
