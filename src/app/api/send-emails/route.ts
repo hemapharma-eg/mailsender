@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     // Initialize transporter with connection pooling
     const transporter = nodemailer.createTransport({
       pool: true,
-      maxConnections: 5,
+      maxConnections: 1, // Force a single connection for the entire batch to completely avoid DNS EBUSY errors
       maxMessages: 100,
       host: smtp.host,
       port: Number(smtp.port),
@@ -37,8 +37,9 @@ export async function POST(req: Request) {
     // Format sender
     const sender = smtp.senderName ? `"${smtp.senderName}" <${smtp.user}>` : smtp.user;
 
-    // Send emails concurrently via the pool
-    const promises = contacts.map(async (contact: any) => {
+    // Send emails sequentially through the single connection pool to avoid DNS EBUSY limits
+    const results = [];
+    for (const contact of contacts) {
       try {
         const personalizedText = text ? text.replace(/{{\s*Name\s*}}/gi, contact.name || '').replace(/{{\s*Title\s*}}/gi, contact.title || '') : undefined;
         let personalizedHtml = html ? html.replace(/{{\s*Name\s*}}/gi, contact.name || '').replace(/{{\s*Title\s*}}/gi, contact.title || '') : undefined;
@@ -55,13 +56,11 @@ export async function POST(req: Request) {
           attachments: attachments ? attachments.map((a: any) => ({ filename: a.filename, content: a.content, encoding: 'base64' })) : []
         });
 
-        return { email: contact.email, success: true, messageId: info.messageId };
+        results.push({ email: contact.email, success: true, messageId: info.messageId });
       } catch (error: any) {
-        return { email: contact.email, success: false, error: error.message };
+        results.push({ email: contact.email, success: false, error: error.message });
       }
-    });
-
-    const results = await Promise.all(promises);
+    }
     
     // Close the pool to ensure the serverless function can exit or doesn't leak connections
     transporter.close();
