@@ -107,47 +107,71 @@ export default function Home() {
     if (!emailContent.subject || (!emailHtml && !signatureHtml)) return alert('Please fill in email subject and body');
 
     setIsSending(true);
-    setProgress(10);
+    setProgress(0);
     setResults(null);
 
     // Combine email body and signature
     const finalHtml = `${emailHtml}<br/><br/>${signatureHtml}`;
+    
+    let totalSuccessful = 0;
+    let totalFailed = 0;
+    let hasError = false;
+
+    const BATCH_SIZE = 20;
+    const totalBatches = Math.ceil(contacts.length / BATCH_SIZE);
 
     try {
-      const res = await fetch('/api/send-emails', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          smtp,
-          contacts,
-          subject: emailContent.subject,
-          html: finalHtml,
-          attachments
-        })
-      });
+      for (let i = 0; i < totalBatches; i++) {
+        const batchContacts = contacts.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
+        
+        try {
+          const res = await fetch('/api/send-emails', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              smtp,
+              contacts: batchContacts,
+              subject: emailContent.subject,
+              html: finalHtml,
+              attachments
+            })
+          });
 
-      setProgress(50);
-      
-      let data;
-      const contentType = res.headers.get("content-type");
-      if (contentType && contentType.indexOf("application/json") !== -1) {
-        data = await res.json();
-      } else {
-        const text = await res.text();
-        const isTooLarge = text.includes('413') || text.includes('Too Large') || res.status === 413;
-        throw new Error(isTooLarge ? 'Attachments or inline images are too large! Free hosts limit payloads to 4.5MB. Please reduce the file sizes.' : `Unexpected format (${res.status}): ${text.substring(0, 100)}`);
+          let data;
+          const contentType = res.headers.get("content-type");
+          if (contentType && contentType.indexOf("application/json") !== -1) {
+            data = await res.json();
+          } else {
+            const text = await res.text();
+            const isTooLarge = text.includes('413') || text.includes('Too Large') || res.status === 413;
+            throw new Error(isTooLarge ? 'Attachments or inline images are too large! Free hosts limit payloads to 4.5MB. Please reduce the file sizes.' : `Unexpected format (${res.status}): ${text.substring(0, 100)}`);
+          }
+
+          if (res.ok) {
+            totalSuccessful += data.successful || 0;
+            totalFailed += data.failed || 0;
+          } else {
+            totalFailed += batchContacts.length;
+            hasError = true;
+            console.error('Batch error:', data.error);
+          }
+        } catch (err: any) {
+          totalFailed += batchContacts.length;
+          hasError = true;
+          console.error('Batch exception:', err);
+        }
+
+        setProgress(Math.round(((i + 1) / totalBatches) * 100));
       }
 
-      setProgress(100);
-
-      if (res.ok) {
-        setResults({ successful: data.successful, failed: data.failed });
-      } else {
-        alert('Server Error: ' + data.error);
+      setResults({ successful: totalSuccessful, failed: totalFailed });
+      
+      if (hasError) {
+        alert('Finished sending but with some errors. Check the console for details.');
       }
     } catch (err: any) {
       console.error(err);
-      alert('Error sending emails: ' + err.message);
+      alert('Critical error sending emails: ' + err.message);
     } finally {
       setIsSending(false);
     }
