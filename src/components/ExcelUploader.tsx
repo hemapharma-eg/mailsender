@@ -8,6 +8,7 @@ export interface Contact {
   title?: string;
   name: string;
   email: string;
+  status?: 'S' | 'F';
 }
 
 interface Props {

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import ExcelUploader, { Contact } from '../components/ExcelUploader';
-import { Mail, Settings, Send, Users, CheckCircle, XCircle, Trash2, Paperclip, X, Maximize, Minimize } from 'lucide-react';
+import { Mail, Settings, Send, Users, CheckCircle, XCircle, Trash2, Paperclip, X, Maximize, Minimize, Eye, EyeOff, Save, Download, Upload } from 'lucide-react';
 import 'react-quill/dist/quill.snow.css';
 
 const ReactQuill = dynamic(async () => {
@@ -30,6 +30,47 @@ export default function Home() {
   const [isSending, setIsSending] = useState(false);
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<{successful: number, failed: number} | null>(null);
+
+  const [showPassword, setShowPassword] = useState(false);
+
+  const exportProject = () => {
+    const projectData = {
+      contacts,
+      smtp,
+      emailContent,
+      emailHtml,
+      signatureHtml
+    };
+    const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'mailsender_project.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportProject = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = JSON.parse(evt.target?.result as string);
+        if (data.contacts) setContacts(data.contacts);
+        if (data.smtp) setSmtp(data.smtp);
+        if (data.emailContent) setEmailContent(data.emailContent);
+        if (data.emailHtml !== undefined) setEmailHtml(data.emailHtml);
+        if (data.signatureHtml !== undefined) setSignatureHtml(data.signatureHtml);
+        alert('Project loaded successfully!');
+      } catch (err) {
+        alert('Invalid project file. Could not parse JSON.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
   const handleSmtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSmtp({ ...smtp, [e.target.name]: e.target.value });
@@ -154,6 +195,11 @@ export default function Home() {
                data.results.forEach((r: any) => {
                   if (!r.success && r.error) errors.push(r.error);
                });
+               setContacts(prev => prev.map(c => {
+                 const match = data.results.find((dr: any) => dr.email === c.email);
+                 if (match) return { ...c, status: match.success ? 'S' : 'F' };
+                 return c;
+               }));
             }
           } else {
             totalFailed += batchContacts.length;
@@ -191,6 +237,15 @@ export default function Home() {
           <span style={{ fontSize: '1.25rem', fontWeight: 500, color: '#94a3b8' }}>by TooLabX</span>
         </h1>
         <p>Send bulk emails easily from your own SMTP server</p>
+        <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', justifyItems: 'center', justifyContent: 'center' }}>
+          <button onClick={exportProject} className="btn" style={{ width: 'auto', backgroundColor: '#334155', padding: '0.5rem 1rem' }}>
+            <Download size={16} /> Save Project (JSON)
+          </button>
+          <label className="btn" style={{ width: 'auto', backgroundColor: '#334155', cursor: 'pointer', padding: '0.5rem 1rem', margin: 0 }}>
+            <Upload size={16} /> Load Project (JSON)
+            <input type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportProject} />
+          </label>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
@@ -220,7 +275,11 @@ export default function Home() {
                       <tr key={i}>
                         <td>{c.title || '-'}</td>
                         <td>{c.name || '-'}</td>
-                        <td>{c.email}</td>
+                        <td>
+                          {c.email}
+                          {c.status === 'S' && <span style={{ marginLeft: '0.5rem', color: 'var(--success)', fontWeight: 'bold' }}>(S)</span>}
+                          {c.status === 'F' && <span style={{ marginLeft: '0.5rem', color: 'var(--error)', fontWeight: 'bold' }}>(F)</span>}
+                        </td>
                         <td style={{ textAlign: 'center' }}>
                           <button 
                             onClick={() => removeContact(i)}
@@ -262,7 +321,23 @@ export default function Home() {
             </div>
             <div className="form-group">
               <label>Password / App Password</label>
-              <input type="password" name="pass" className="form-input" placeholder="••••••••" value={smtp.pass} onChange={handleSmtpChange} />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  name="pass" 
+                  className="form-input" 
+                  placeholder="••••••••" 
+                  value={smtp.pass} 
+                  onChange={handleSmtpChange} 
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ position: 'absolute', right: '10px', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
           </div>
         </div>
